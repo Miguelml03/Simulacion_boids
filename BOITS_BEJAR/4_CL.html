@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulación de Boids 3D Mejorada</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #5f75b1;
+            color: #fff;
+        }
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 320px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        h2, h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+        .centered-names {
+        text-align: center;
+        }
+        .stats-container, .controls-container, .legend-container {
+            margin-bottom: 15px;
+        }
+        .stat-item, .control-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .control-item label {
+            display: flex;
+            align-items: center;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #gui-container {
+            margin-top: 15px;
+        }
+        .legend-item {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        .file-input-container {
+            margin-bottom: 15px;
+        }
+        .file-input-container input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+        }
+        .loading-status {
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .loading-status.loading {
+            background-color: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+        }
+        .loading-status.success {
+            background-color: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+        .loading-status.error {
+            background-color: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+        .camera-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            color: white;
+            font-size: 0.9em;
+        }
+        .camera-controls.hidden {
+            display: none;
+        }
+        .section-separator {
+            border-top: 1px solid #555;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center;">
+        Chura Tuni Alex Franco<br>
+        Laura Huareccallo Miguel Angel
+    </h2>
+    
+
+    <div id="info-panel">
+        <h2>Simulación de Boids Mejorada</h2>
+        
+        <!-- Carga de modelos GLB -->
+        <div class="file-input-container">
+            <h3>Modelos 3D</h3>
+            <label for="boid-file-input">Modelo Boid:</label>
+            <input type="file" id="boid-file-input" accept=".glb,.gltf">
+            <label for="leader-file-input">Modelo Líder:</label>
+            <input type="file" id="leader-file-input" accept=".glb,.gltf">
+            <label for="predator-file-input">Modelo Depredador:</label>
+            <input type="file" id="predator-file-input" accept=".glb,.gltf">
+            <div id="loading-status" class="loading-status" style="display: none;"></div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-container">
+            <h3>Estadísticas</h3>
+            <div id="stats-output"></div>
+            <div class="stat-item">
+                <span>Boids Normales:</span>
+                <span id="boid-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Líderes:</span>
+                <span id="leader-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Depredadores:</span>
+                <span id="predator-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Objetivos:</span>
+                <span id="target-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Velocidad Promedio:</span>
+                <span id="avg-velocity">0.00</span>
+            </div>
+        </div>
+        
+        <!-- Contenedor para dat.GUI -->
+        <div id="gui-container">
+             <h3>Parámetros de Simulación</h3>
+        </div>
+
+        <!-- Controles Interactivos -->
+        <div class="controls-container">
+            <h3>Controles Básicos</h3>
+            <div class="control-item">
+                 <label for="show-bounds-checkbox">
+                    <input type="checkbox" id="show-bounds-checkbox" checked> Mostrar Límites
+                </label>
+            </div>
+             <div class="control-item">
+                 <label for="show-vectors-checkbox">
+                    <input type="checkbox" id="show-vectors-checkbox"> Mostrar Vectores
+                </label>
+            </div>
+            <div class="control-item">
+                 <label for="show-zones-checkbox">
+                    <input type="checkbox" id="show-zones-checkbox"> Mostrar Zonas de Influencia
+                </label>
+            </div>
+            <div class="control-item">
+                 <label for="show-trails-checkbox">
+                    <input type="checkbox" id="show-trails-checkbox"> Mostrar Trazado de Rutas
+                </label>
+            </div>
+            <div class="control-item">
+                 <label for="free-camera-checkbox">
+                    <input type="checkbox" id="free-camera-checkbox"> Cámara Libre
+                </label>
+            </div>
+            <button id="toggle-pause-button">Pausar</button>
+            <button id="reset-button">Resetear Simulación</button>
+        </div>
+
+        <div class="section-separator"></div>
+
+        <!-- Controles de Entidades -->
+        <div class="controls-container">
+            <h3>Agregar Entidades</h3>
+            <button id="add-boid-button">Agregar 10 Boids</button>
+            <button id="add-leader-button">Agregar Líder</button>
+            <button id="add-predator-button">Agregar Depredador</button>
+            <button id="add-target-button">Agregar Objetivo</button>
+            <button id="add-obstacle-button">Agregar Obstáculo</button>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="legend-container">
+            <h3>Leyenda</h3>
+            <p class="legend-item"><strong>Boids Normales:</strong> Azul → Verde → Rojo (velocidad)</p>
+            <p class="legend-item"><strong>Líderes:</strong> Dorado, guían al grupo</p>
+            <p class="legend-item"><strong>Depredadores:</strong> Rojo oscuro, persiguen boids</p>
+            <p class="legend-item"><strong>Objetivos:</strong> Verde brillante, atraen boids</p>
+            <p class="legend-item"><strong>Zonas Verdes:</strong> Radio de percepción</p>
+            <p class="legend-item"><strong>Zonas Rojas:</strong> Radio de separación</p>
+        </div>
+    </div>
+
+    <div id="camera-controls" class="camera-controls hidden">
+        <h4>Controles de Cámara Libre</h4>
+        <p>WASD: Movimiento</p>
+        <p>Ratón: Mirar alrededor</p>
+        <p>Shift: Acelerar</p>
+        <p>Espacio: Subir</p>
+        <p>C: Bajar</p>
+    </div>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import Stats from 'three/addons/libs/stats.module.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // --- CLASE BOID MEJORADA ---
+        class Boid {
+            constructor(type = 'boid', modelTemplate = null) {
+                this.type = type; // 'boid', 'leader', 'predator'
+                this.position = new THREE.Vector3(
+                    Math.random() * 200 - 100,
+                    Math.random() * 200 - 100,
+                    Math.random() * 200 - 100
+                );
+                
+                // Velocidades diferentes según el tipo
+                const speedMultiplier = type === 'predator' ? 1.5 : type === 'leader' ? 1.2 : 1.0;
+                this.velocity = new THREE.Vector3().randomDirection().setLength((Math.random() * 2 + 1) * speedMultiplier);
+                this.acceleration = new THREE.Vector3();
+
+                // Crear el objeto 3D
+                this.createMesh(modelTemplate);
+                
+                // Helper para visualizar el vector de velocidad
+                this.velocityHelper = new THREE.ArrowHelper(this.velocity.clone().normalize(), this.position, 15, 0xffff00);
+                this.velocityHelper.visible = false;
+
+                // Zonas de influencia
+                this.createInfluenceZones();
+
+                // Trazado de rutas
+                this.trail = [];
+                this.trailGeometry = new THREE.BufferGeometry();
+                this.trailMaterial = new THREE.LineBasicMaterial({ 
+                    color: this.getTrailColor(), 
+                    transparent: true, 
+                    opacity: 0.6 
+                });
+                this.trailLine = new THREE.Line(this.trailGeometry, this.trailMaterial);
+                this.trailLine.visible = false;
+
+                // Propiedades específicas por tipo
+                this.setupTypeProperties();
+            }
+
+            setupTypeProperties() {
+                switch(this.type) {
+                    case 'leader':
+                        this.leaderInfluence = 80;
+                        this.maxSpeed = FlockSimulation.PARAMS.maxSpeed * 1.2;
+                        break;
+                    case 'predator':
+                        this.huntRadius = 150;
+                        this.maxSpeed = FlockSimulation.PARAMS.maxSpeed * 1.5;
+                        this.energy = 100;
+                        break;
+                    default:
+                        this.maxSpeed = FlockSimulation.PARAMS.maxSpeed;
+                }
+            }
+
+            createMesh(modelTemplate) {
+                if (modelTemplate) {
+                    this.mesh = modelTemplate.clone();
+                    this.mesh.traverse((child) => {
+                        if (child.isMesh) {
+                            child.material = child.material.clone();
+                        }
+                    });
+                } else {
+                    // Fallback con formas diferentes según el tipo
+                    let geometry, material;
+                    switch(this.type) {
+                        case 'leader':
+                            geometry = new THREE.ConeGeometry(3, 12, 8);
+                            material = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+                            break;
+                        case 'predator':
+                            geometry = new THREE.ConeGeometry(4, 16, 8);
+                            material = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
+                            break;
+                        default:
+                            geometry = new THREE.ConeGeometry(2, 8, 8);
+                            material = new THREE.MeshLambertMaterial({ color: 0x00aaff });
+                    }
+                    geometry.rotateX(Math.PI / 2);
+                    this.mesh = new THREE.Mesh(geometry, material);
+                }
+                
+                this.mesh.position.copy(this.position);
+                
+                // Normalizar escala
+                const box = new THREE.Box3().setFromObject(this.mesh);
+                const size = box.getSize(new THREE.Vector3()).length();
+                const targetSize = this.type === 'predator' ? 40 : this.type === 'leader' ? 35 : 30;
+                if (size > 0) {
+                    this.mesh.scale.multiplyScalar(targetSize / size);
+                }
+            }
+
+            createInfluenceZones() {
+                // Zona de percepción (verde)
+                const perceptionGeometry = new THREE.SphereGeometry(FlockSimulation.PARAMS.perceptionRadius, 16, 16);
+                const perceptionMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff00, 
+                    transparent: true, 
+                    opacity: 0.1,
+                    wireframe: true
+                });
+                this.perceptionZone = new THREE.Mesh(perceptionGeometry, perceptionMaterial);
+                this.perceptionZone.visible = false;
+
+                // Zona de separación (roja)
+                const separationGeometry = new THREE.SphereGeometry(FlockSimulation.PARAMS.separationRadius, 16, 16);
+                const separationMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xff0000, 
+                    transparent: true, 
+                    opacity: 0.1,
+                    wireframe: true
+                });
+                this.separationZone = new THREE.Mesh(separationGeometry, separationMaterial);
+                this.separationZone.visible = false;
+            }
+
+            getTrailColor() {
+                switch(this.type) {
+                    case 'leader': return 0xffd700;
+                    case 'predator': return 0xff0000;
+                    default: return 0x00aaff;
+                }
+            }
+
+            updateTrail() {
+                this.trail.push(this.position.clone());
+                if (this.trail.length > 50) {
+                    this.trail.shift();
+                }
+
+                if (this.trail.length > 1) {
+                    const positions = new Float32Array(this.trail.length * 3);
+                    const colors = new Float32Array(this.trail.length * 3);
+                    
+                    for (let i = 0; i < this.trail.length; i++) {
+                        positions[i * 3] = this.trail[i].x;
+                        positions[i * 3 + 1] = this.trail[i].y;
+                        positions[i * 3 + 2] = this.trail[i].z;
+                        
+                        const alpha = i / this.trail.length;
+                        const color = new THREE.Color(this.getTrailColor());
+                        colors[i * 3] = color.r;
+                        colors[i * 3 + 1] = color.g;
+                        colors[i * 3 + 2] = color.b;
+                    }
+                    
+                    this.trailGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    this.trailGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                    this.trailMaterial.vertexColors = true;
+                    this.trailMaterial.opacity = 0.6;
+                }
+            }
+
+            update(params, bounds, targets, predators) {
+                this.velocity.add(this.acceleration);
+                this.velocity.clampLength(0, this.maxSpeed || params.maxSpeed);
+                this.position.add(this.velocity);
+                
+                this.acceleration.multiplyScalar(0);
+
+                this.mesh.position.copy(this.position);
+                this.perceptionZone.position.copy(this.position);
+                this.separationZone.position.copy(this.position);
+                
+                // Orientar hacia la dirección de movimiento
+                if (this.velocity.length() > 0) {
+                    const direction = this.velocity.clone().normalize();
+                    this.mesh.lookAt(this.position.clone().add(direction));
+                }
+
+                this.checkBounds(bounds);
+                this.updateColor(params.maxSpeed);
+                this.updateVelocityHelper();
+                this.updateTrail();
+
+                // Comportamientos específicos por tipo
+                if (this.type === 'predator') {
+                    this.updatePredatorBehavior(targets);
+                }
+            }
+
+            updatePredatorBehavior(boids) {
+                // Los depredadores persiguen al boid más cercano
+                let closestBoid = null;
+                let minDistance = Infinity;
+                
+                for (const boid of boids) {
+                    if (boid.type === 'boid' || boid.type === 'leader') {
+                        const distance = this.position.distanceTo(boid.position);
+                        if (distance < minDistance && distance < this.huntRadius) {
+                            minDistance = distance;
+                            closestBoid = boid;
+                        }
+                    }
+                }
+                
+                if (closestBoid) {
+                    const huntForce = this.seek(closestBoid.position).multiplyScalar(2.0);
+                    this.applyForce(huntForce);
+                }
+            }
+            
+            updateVelocityHelper() {
+                this.velocityHelper.position.copy(this.position);
+                this.velocityHelper.setDirection(this.velocity.clone().normalize());
+            }
+
+            flock(boids, obstacles, targets, params) {
+                if (this.type === 'predator') {
+                    // Los depredadores solo evitan obstáculos
+                    const obstacleAvoidanceForce = this.avoid(obstacles, params.obstacleRadius).multiplyScalar(params.obstacleAvoidance);
+                    this.applyForce(obstacleAvoidanceForce);
+                    return;
+                }
+
+                const separationForce = this.separate(boids, params.separationRadius).multiplyScalar(params.separation);
+                const alignmentForce = this.align(boids, params.perceptionRadius).multiplyScalar(params.alignment);
+                const cohesionForce = this.cohere(boids, params.perceptionRadius).multiplyScalar(params.cohesion);
+                const obstacleAvoidanceForce = this.avoid(obstacles, params.obstacleRadius).multiplyScalar(params.obstacleAvoidance);
+                const seekTargetForce = this.seekTargets(targets, params.targetRadius).multiplyScalar(params.targetAttraction);
+                const fleeForce = this.flee(boids, params.fleeRadius).multiplyScalar(params.fleeStrength);
+
+                this.applyForce(separationForce);
+                this.applyForce(alignmentForce);
+                this.applyForce(cohesionForce);
+                this.applyForce(obstacleAvoidanceForce);
+                this.applyForce(seekTargetForce);
+                this.applyForce(fleeForce);
+
+                // Comportamiento especial para líderes
+                if (this.type === 'leader') {
+                    const leaderForce = this.leaderBehavior(boids, params);
+                    this.applyForce(leaderForce);
+                }
+            }
+
+            leaderBehavior(boids, params) {
+                // Los líderes tienden a moverse hacia el frente del grupo
+                const groupCenter = new THREE.Vector3();
+                let count = 0;
+                
+                for (const other of boids) {
+                    if (other.type === 'boid' && this.position.distanceTo(other.position) < this.leaderInfluence) {
+                        groupCenter.add(other.position);
+                        count++;
+                    }
+                }
+                
+                if (count > 0) {
+                    groupCenter.divideScalar(count);
+                    const direction = new THREE.Vector3().subVectors(this.position, groupCenter).normalize();
+                    return direction.multiplyScalar(0.5);
+                }
+                
+                return new THREE.Vector3();
+            }
+
+            seekTargets(targets, radius) {
+                const steering = new THREE.Vector3();
+                for (const target of targets) {
+                    const distance = this.position.distanceTo(target.position);
+                    if (distance < radius) {
+                        const seek = this.seek(target.position);
+                        steering.add(seek);
+                    }
+                }
+                return steering;
+            }
+
+            flee(boids, radius) {
+                const steering = new THREE.Vector3();
+                for (const other of boids) {
+                    if (other.type === 'predator') {
+                        const distance = this.position.distanceTo(other.position);
+                        if (distance < radius) {
+                            const flee = this.seek(other.position).multiplyScalar(-1);
+                            steering.add(flee.multiplyScalar(3.0)); // Huida más fuerte
+                        }
+                    }
+                }
+                return steering;
+            }
+
+            seek(target) {
+                const desired = new THREE.Vector3().subVectors(target, this.position);
+                desired.setLength(this.maxSpeed || FlockSimulation.PARAMS.maxSpeed);
+                const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+                steer.clampLength(0, FlockSimulation.PARAMS.maxForce);
+                return steer;
+            }
+
+            applyForce(force) {
+                this.acceleration.add(force);
+            }
+
+            separate(boids, radius) {
+                const steering = new THREE.Vector3();
+                let total = 0;
+                for (const other of boids) {
+                    if (other === this || other.type === 'predator') continue;
+                    const d = this.position.distanceTo(other.position);
+                    if (d > 0 && d < radius) {
+                        const diff = new THREE.Vector3().subVectors(this.position, other.position);
+                        diff.normalize().divideScalar(d);
+                        steering.add(diff);
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.divideScalar(total);
+                    steering.setLength(this.maxSpeed || FlockSimulation.PARAMS.maxSpeed);
+                    steering.sub(this.velocity);
+                    steering.clampLength(0, FlockSimulation.PARAMS.maxForce);
+                }
+                return steering;
+            }
+
+            align(boids, radius) {
+                const steering = new THREE.Vector3();
+                let total = 0;
+                for (const other of boids) {
+                    if (other === this || other.type === 'predator') continue;
+                    const d = this.position.distanceTo(other.position);
+                    if (d > 0 && d < radius) {
+                        steering.add(other.velocity);
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.divideScalar(total);
+                    steering.setLength(this.maxSpeed || FlockSimulation.PARAMS.maxSpeed);
+                    steering.sub(this.velocity);
+                    steering.clampLength(0, FlockSimulation.PARAMS.maxForce);
+                }
+                return steering;
+            }
+
+            cohere(boids, radius) {
+                const steering = new THREE.Vector3();
+                let total = 0;
+                for (const other of boids) {
+                    if (other === this || other.type === 'predator') continue;
+                    const d = this.position.distanceTo(other.position);
+                    if (d > 0 && d < radius) {
+                        steering.add(other.position);
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.divideScalar(total);
+                    return this.seek(steering);
+                }
+                return new THREE.Vector3();
+            }
+
+            avoid(obstacles, radius) {
+                const steering = new THREE.Vector3();
+                for (const obstacle of obstacles) {
+                    const d = this.position.distanceTo(obstacle.position);
+                    if (d < radius) {
+                        const diff = new THREE.Vector3().subVectors(this.position, obstacle.position);
+                        diff.normalize().divideScalar(d * 0.1);
+                        steering.add(diff);
+                    }
+                }
+                if (steering.length() > 0) {
+                    steering.setLength(this.maxSpeed || FlockSimulation.PARAMS.maxSpeed);
+                    steering.sub(this.velocity);
+                    steering.clampLength(0, FlockSimulation.PARAMS.maxForce * 2);
+                }
+                return steering;
+            }
+
+            checkBounds(bounds) {
+                if (this.position.x < bounds.min.x) this.velocity.x *= -1;
+                if (this.position.x > bounds.max.x) this.velocity.x *= -1;
+                if (this.position.y < bounds.min.y) this.velocity.y *= -1;
+                if (this.position.y > bounds.max.y) this.velocity.y *= -1;
+                if (this.position.z < bounds.min.z) this.velocity.z *= -1;
+                if (this.position.z > bounds.max.z) this.velocity.z *= -1;
+            }
+
+            updateColor(maxSpeed) {
+                if (this.type === 'leader') {
+                    const color = new THREE.Color(0xffd700);
+                    this.applyColorToMesh(color);
+                } else if (this.type === 'predator') {
+                    const color = new THREE.Color(0x8b0000);
+                    this.applyColorToMesh(color);
+                } else {
+                    const speedRatio = this.velocity.length() / maxSpeed;
+                    const hue = 0.6 - (speedRatio * 0.6);
+                    const color = new THREE.Color().setHSL(hue, 0.9, 0.5);
+                    this.applyColorToMesh(color);
+                }
+            }
+
+            applyColorToMesh(color) {
+                this.mesh.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => mat.color.copy(color));
+                        } else {
+                            child.material.color.copy(color);
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- CLASE PRINCIPAL DE LA SIMULACIÓN MEJORADA ---
+        class FlockSimulation {
+            static PARAMS = {
+                boidCount: 100,
+                leaderCount: 3,
+                predatorCount: 2,
+                separation: 1.5,
+                alignment: 1.0,
+                cohesion: 1.0,
+                maxSpeed: 3,
+                maxForce: 0.05,
+                perceptionRadius: 50,
+                separationRadius: 25,
+                obstacleRadius: 70,
+                obstacleAvoidance: 2.0,
+                targetRadius: 100,
+                targetAttraction: 1.5,
+                fleeRadius: 80,
+                fleeStrength: 2.5
+            };
+
+            constructor() {
+                this.boids = [];
+                this.obstacles = [];
+                this.targets = [];
+                this.isPaused = false;
+                this.modelTemplates = {
+                    boid: null,
+                    leader: null,
+                    predator: null
+                };
+                this.loader = new GLTFLoader();
+                this.freeCameraMode = false;
+                this.keys = {};
+                
+                this.initScene();
+                this.initLights();
+                this.initHelpers();
+                this.initControls();
+                this.initUI();
+                this.initGUI();
+                this.initFileInputs();
+                this.initFreeCamera();
+
+                this.reset();
+                this.animate();
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color("#686093");
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(0, 150, 350);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                document.body.appendChild(this.renderer.domElement);
+                
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            initLights() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                directionalLight.position.set(50, 100, 75);
+                this.scene.add(directionalLight);
+            }
+
+            initHelpers() {                
+                const boundSize = 250;
+                this.bounds = new THREE.Box3(
+                    new THREE.Vector3(-boundSize, -boundSize, -boundSize),
+                    new THREE.Vector3(boundSize, boundSize, boundSize)
+                );
+                this.boundsHelper = new THREE.Box3Helper(this.bounds, 0x888888);
+                this.scene.add(this.boundsHelper);
+                
+                // Stats.js
+                this.stats = new Stats();
+                document.getElementById('stats-output').appendChild(this.stats.dom);
+            }
+            
+            initControls() {
+                this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.orbitControls.enableDamping = true;
+            }
+
+            initFreeCamera() {
+                document.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
+                document.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
+            }
+
+            updateFreeCamera(delta) {
+                const speed = 50;
+                const moveSpeed = speed * delta;
+                
+                if (this.keys['w']) this.camera.position.add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
+                if (this.keys['s']) this.camera.position.sub(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
+                if (this.keys['a']) this.camera.position.add(new THREE.Vector3().crossVectors(this.camera.getWorldDirection(new THREE.Vector3()), this.camera.up).normalize().multiplyScalar(-moveSpeed));
+                if (this.keys['d']) this.camera.position.add(new THREE.Vector3().crossVectors(this.camera.getWorldDirection(new THREE.Vector3()), this.camera.up).normalize().multiplyScalar(moveSpeed));
+                if (this.keys[' ']) this.camera.position.y += moveSpeed;
+                if (this.keys['c']) this.camera.position.y -= moveSpeed;
+                if (this.keys['shift']) this.camera.position.add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed * 2));
+            }
+
+            initUI() {
+                this.boidCountEl = document.getElementById('boid-count');
+                this.leaderCountEl = document.getElementById('leader-count');
+                this.predatorCountEl = document.getElementById('predator-count');
+                this.targetCountEl = document.getElementById('target-count');
+                this.avgVelocityEl = document.getElementById('avg-velocity');
+                this.loadingStatusEl = document.getElementById('loading-status');
+
+                document.getElementById('toggle-pause-button').addEventListener('click', () => this.togglePause());
+                document.getElementById('reset-button').addEventListener('click', () => this.reset());
+                document.getElementById('add-boid-button').addEventListener('click', () => this.addBoids(10));
+                document.getElementById('add-leader-button').addEventListener('click', () => this.addLeaders(1));
+                document.getElementById('add-predator-button').addEventListener('click', () => this.addPredators(1));
+                document.getElementById('add-target-button').addEventListener('click', () => this.addTarget());
+                document.getElementById('add-obstacle-button').addEventListener('click', () => this.addObstacle());
+                
+                document.getElementById('show-bounds-checkbox').addEventListener('change', (e) => {
+                    this.boundsHelper.visible = e.target.checked;
+                });
+                
+                document.getElementById('show-vectors-checkbox').addEventListener('change', (e) => {
+                    const visible = e.target.checked;
+                    this.boids.forEach(b => b.velocityHelper.visible = visible);
+                });
+
+                document.getElementById('show-zones-checkbox').addEventListener('change', (e) => {
+                    const visible = e.target.checked;
+                    this.boids.forEach(b => {
+                        b.perceptionZone.visible = visible;
+                        b.separationZone.visible = visible;
+                    });
+                });
+
+                document.getElementById('show-trails-checkbox').addEventListener('change', (e) => {
+                    const visible = e.target.checked;
+                    this.boids.forEach(b => b.trailLine.visible = visible);
+                });
+
+                document.getElementById('free-camera-checkbox').addEventListener('change', (e) => {
+                    this.freeCameraMode = e.target.checked;
+                    document.getElementById('camera-controls').classList.toggle('hidden', !this.freeCameraMode);
+                    this.orbitControls.enabled = !this.freeCameraMode;
+                });
+            }
+
+            initFileInputs() {
+                document.getElementById('boid-file-input').addEventListener('change', (e) => this.loadModel(e, 'boid'));
+                document.getElementById('leader-file-input').addEventListener('change', (e) => this.loadModel(e, 'leader'));
+                document.getElementById('predator-file-input').addEventListener('change', (e) => this.loadModel(e, 'predator'));
+            }
+
+            loadModel(event, type) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                this.showLoadingStatus(`Cargando modelo ${type}...`, 'loading');
+                const url = URL.createObjectURL(file);
+
+                this.loader.load(
+                    url,
+                    (gltf) => {
+                        this.modelTemplates[type] = gltf.scene;
+                        this.showLoadingStatus(`Modelo ${type} cargado`, 'success');
+                        setTimeout(() => this.hideLoadingStatus(), 1000);
+                        URL.revokeObjectURL(url);
+                    },
+                    (progress) => {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        this.showLoadingStatus(`Cargando ${type}: ${percent}%`, 'loading');
+                    },
+                    (error) => {
+                        console.error(`Error cargando modelo ${type}:`, error);
+                        this.showLoadingStatus(`Error cargando ${type}`, 'error');
+                        setTimeout(() => this.hideLoadingStatus(), 3000);
+                        URL.revokeObjectURL(url);
+                    }
+                );
+            }
+
+            showLoadingStatus(message, type) {
+                this.loadingStatusEl.textContent = message;
+                this.loadingStatusEl.className = `loading-status ${type}`;
+                this.loadingStatusEl.style.display = 'block';
+            }
+
+            hideLoadingStatus() {
+                this.loadingStatusEl.style.display = 'none';
+            }
+            
+            initGUI() {
+                this.gui = new GUI({ container: document.getElementById('gui-container') });
+                
+                const flockFolder = this.gui.addFolder('Comportamiento');
+                flockFolder.add(FlockSimulation.PARAMS, 'separation', 0, 5, 0.1).name('Separación');
+                flockFolder.add(FlockSimulation.PARAMS, 'alignment', 0, 5, 0.1).name('Alineación');
+                flockFolder.add(FlockSimulation.PARAMS, 'cohesion', 0, 5, 0.1).name('Cohesión');
+                flockFolder.add(FlockSimulation.PARAMS, 'maxSpeed', 1, 10, 0.1).name('Velocidad Máx.');
+                flockFolder.add(FlockSimulation.PARAMS, 'maxForce', 0.01, 0.1, 0.01).name('Fuerza Máx.');
+                
+                const radiusFolder = this.gui.addFolder('Radios');
+                radiusFolder.add(FlockSimulation.PARAMS, 'perceptionRadius', 10, 200, 1).name('Percepción');
+                radiusFolder.add(FlockSimulation.PARAMS, 'separationRadius', 5, 100, 1).name('Separación');
+                radiusFolder.add(FlockSimulation.PARAMS, 'targetRadius', 10, 200, 1).name('Objetivos');
+                radiusFolder.add(FlockSimulation.PARAMS, 'fleeRadius', 10, 200, 1).name('Huida');
+                
+                const weightsFolder = this.gui.addFolder('Pesos');
+                weightsFolder.add(FlockSimulation.PARAMS, 'targetAttraction', 0, 5, 0.1).name('Atracción Obj.');
+                weightsFolder.add(FlockSimulation.PARAMS, 'fleeStrength', 0, 5, 0.1).name('Fuerza Huida');
+                
+                flockFolder.open();
+                radiusFolder.open();
+                weightsFolder.open();
+            }
+
+            reset() {
+                // Limpiar boids
+                this.boids.forEach(boid => {
+                    this.scene.remove(boid.mesh);
+                    this.scene.remove(boid.velocityHelper);
+                    this.scene.remove(boid.perceptionZone);
+                    this.scene.remove(boid.separationZone);
+                    this.scene.remove(boid.trailLine);
+                });
+                this.boids = [];
+
+                // Limpiar obstáculos
+                this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                this.obstacles = [];
+                
+                // Limpiar objetivos
+                this.targets.forEach(target => this.scene.remove(target.mesh));
+                this.targets = [];
+                
+                this.addBoids(FlockSimulation.PARAMS.boidCount);
+                this.addLeaders(FlockSimulation.PARAMS.leaderCount);
+                this.addPredators(FlockSimulation.PARAMS.predatorCount);
+            }
+
+            addBoids(count) {
+                const showVectors = document.getElementById('show-vectors-checkbox').checked;
+                const showZones = document.getElementById('show-zones-checkbox').checked;
+                const showTrails = document.getElementById('show-trails-checkbox').checked;
+                
+                for (let i = 0; i < count; i++) {
+                    const boid = new Boid('boid', this.modelTemplates.boid);
+                    boid.velocityHelper.visible = showVectors;
+                    boid.perceptionZone.visible = showZones;
+                    boid.separationZone.visible = showZones;
+                    boid.trailLine.visible = showTrails;
+                    
+                    this.boids.push(boid);
+                    this.scene.add(boid.mesh);
+                    this.scene.add(boid.velocityHelper);
+                    this.scene.add(boid.perceptionZone);
+                    this.scene.add(boid.separationZone);
+                    this.scene.add(boid.trailLine);
+                }
+                this.updateStats();
+            }
+
+            addLeaders(count) {
+                for (let i = 0; i < count; i++) {
+                    const leader = new Boid('leader', this.modelTemplates.leader);
+                    this.boids.push(leader);
+                    this.scene.add(leader.mesh);
+                    this.scene.add(leader.velocityHelper);
+                    this.scene.add(leader.perceptionZone);
+                    this.scene.add(leader.separationZone);
+                    this.scene.add(leader.trailLine);
+                }
+                this.updateStats();
+            }
+
+            addPredators(count) {
+                for (let i = 0; i < count; i++) {
+                    const predator = new Boid('predator', this.modelTemplates.predator);
+                    this.boids.push(predator);
+                    this.scene.add(predator.mesh);
+                    this.scene.add(predator.velocityHelper);
+                    this.scene.add(predator.perceptionZone);
+                    this.scene.add(predator.separationZone);
+                    this.scene.add(predator.trailLine);
+                }
+                this.updateStats();
+            }
+
+            addTarget() {
+                const geometry = new THREE.SphereGeometry(15, 32, 32);
+                const material = new THREE.MeshLambertMaterial({ color: 0x00ff00, transparent: true, opacity: 0.7 });
+                const target = new THREE.Mesh(geometry, material);
+                
+                const size = this.bounds.max.x * 0.8;
+                target.position.set(
+                    (Math.random() - 0.5) * size,
+                    (Math.random() - 0.5) * size,
+                    (Math.random() - 0.5) * size
+                );
+                
+                this.targets.push({ mesh: target, position: target.position });
+                this.scene.add(target);
+                this.updateStats();
+            }
+
+            addObstacle() {
+                const geometry = new THREE.SphereGeometry(25, 32, 32);
+                const material = new THREE.MeshLambertMaterial({ color: 0xff4444, transparent: true, opacity: 0.8 });
+                const obstacle = new THREE.Mesh(geometry, material);
+                
+                const size = this.bounds.max.x * 0.8;
+                obstacle.position.set(
+                    (Math.random() - 0.5) * size,
+                    (Math.random() - 0.5) * size,
+                    (Math.random() - 0.5) * size
+                );
+                
+                this.obstacles.push(obstacle);
+                this.scene.add(obstacle);
+            }
+            
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                document.getElementById('toggle-pause-button').textContent = this.isPaused ? 'Reanudar' : 'Pausar';
+            }
+
+            updateStats() {
+                const boids = this.boids.filter(b => b.type === 'boid').length;
+                const leaders = this.boids.filter(b => b.type === 'leader').length;
+                const predators = this.boids.filter(b => b.type === 'predator').length;
+                
+                this.boidCountEl.textContent = boids;
+                this.leaderCountEl.textContent = leaders;
+                this.predatorCountEl.textContent = predators;
+                this.targetCountEl.textContent = this.targets.length;
+                
+                if (this.boids.length > 0) {
+                    const avgVelocity = this.boids.reduce((acc, boid) => acc + boid.velocity.length(), 0) / this.boids.length;
+                    this.avgVelocityEl.textContent = avgVelocity.toFixed(2);
+                } else {
+                    this.avgVelocityEl.textContent = '0.00';
+                }
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const delta = 0.016; // Tiempo delta aproximado para 60 FPS
+                
+                this.orbitControls.update();
+                this.stats.begin();
+
+                if (!this.isPaused) {
+                    if (this.freeCameraMode) {
+                        this.updateFreeCamera(delta);
+                    }
+
+                    for (const boid of this.boids) {
+                        boid.flock(this.boids, this.obstacles, this.targets, FlockSimulation.PARAMS);
+                        boid.update(FlockSimulation.PARAMS, this.bounds, this.targets, this.boids.filter(b => b.type === 'predator'));
+                    }
+                    this.updateStats();
+                }
+
+                this.renderer.render(this.scene, this.camera);
+                this.stats.end();
+            }
+        }
+
+        // Iniciar la simulación
+        new FlockSimulation();
+    </script>
+</body>
+</html>
